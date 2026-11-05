@@ -1,0 +1,107 @@
+#!/bin/sh /etc/rc.common
+# ==============================================================================
+#  FileBrowser 启动脚本（procd 版）
+#
+#  上游原脚本的四个问题：
+#    1. 不是 procd：start() 用 "&" 丢到后台，进程死了没人拉起。
+#    2. stop() 用 kill -9，不给进程写数据库的机会。
+#    3. 默认可执行目录是 /tmp，而 /tmp 是 tmpfs，重启清空 → 每次开机都要
+#       重新下载 33 MB，等于不可用（本仓库已把默认值改为 /usr/bin）。
+#    4. 没有挂载点校验：root_path 指向 /mnt/sda1 时，盘没挂上就会静默写进
+#       rootfs，把系统盘塞满。
+#
+#  本版保留原脚本读取的全部 uci 项（界面读的是 filebrowser.@global[0].*），
+#  只把启动方式换成 procd，并补上「可执行文件」「挂载点」两道校验。
+#
+#  可执行文件来源：同 feed 的 filebrowser-bin 包（/usr/bin/filebrowser）。
+# ==============================================================================
+
+START=99
+USE_PROCD=1
+
+LOG_FILE=/var/log/filebrowser.log
+
+cfg_get() {
+	uci -q get "filebrowser.@global[0].$1" 2>/dev/null
+}
+
+log_msg() {
+	logger -t filebrowser "$1"
+	printf '%s: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >> "$LOG_FILE"
+}
+
+# 取路径的前两段作为挂载点（/mnt/sda1/x -> /mnt/sda1），查 /proc/mounts
+is_mounted() {
+	local mp
+	mp=$(printf '%s' "$1" | cut -d/ -f1-3)
+	[ -n "$mp" ] || return 0
+	grep -qs " $mp " /proc/mounts || return 1
+	return 0
+}
+
+start_service() {
+	[ "$(cfg_get enable)" = "1" ] || return 0
+
+	local exe_dir prog address port db user pass cert key root hashed
+
+	exe_dir=$(cfg_get executable_directory)
+	[ -n "$exe_dir" ] || exe_dir=/usr/bin
+	prog="$exe_dir/filebrowser"
+	if [ ! -x "$prog" ]; then
+		log_msg "可执行文件 $prog 不存在或不可执行，拒绝启动（应由 filebrowser-bin 包提供）"
+		return 0
+	fi
+
+	address=$(cfg_get address)
+	[ -n "$address" ] || address=0.0.0.0
+	port=$(cfg_get port)
+	[ -n "$port" ] || port=8088
+	db=$(cfg_get database)
+	[ -n "$db" ] || db=/etc/filebrowser.db
+	user=$(cfg_get username)
+	[ -n "$user" ] || user=admin
+	pass=$(cfg_get password)
+	[ -n "$pass" ] || pass=admin
+	root=$(cfg_get root_path)
+	[ -n "$root" ] || root=/root
+	cert=$(cfg_get ssl_cert)
+	key=$(cfg_get ssl_key)
+
+	case "$root" in
+	/mnt/*)
+		if ! is_mounted "$root"; then
+			log_msg "根目录 $root 所在分区未挂载，拒绝启动（避免写进 rootfs）"
+			return 0
+		fi
+		;;
+	esac
+
+	mkdir -p "$(dirname "$db")" 2>/dev/null
+
+	# 首启用 --username/--password 建初始账号，密码需先 hash
+	hashed=$("$prog" hash "$pass" 2>/dev/null)
+	[ -n "$hashed" ] || hashed="$pass"
+
+	procd_open_instance
+	procd_set_param command "$prog"
+	procd_append_param command -a "$address" -p "$port" -r "$root" -d "$db"
+	procd_append_param command --username "$user" --password "$hashed"
+	if [ -n "$cert" ] && [ -n "$key" ]; then
+		procd_append_param command -t "$cert" -k "$key"
+	fi
+	procd_append_param command -l "$LOG_FILE"
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+
+	log_msg "已启动：$address:$port 根目录 $root 数据库 $db"
+}
+
+stop_service() {
+	log_msg "已停止"
+}
+
+service_triggers() {
+	procd_add_reload_trigger filebrowser
+}

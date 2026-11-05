@@ -1,0 +1,9 @@
+# 编译产物
+*.ipk
+*.apk
+*.tar.gz
+*.bin
+/build_dir/
+/staging_dir/
+/tmp/
+/logs/
