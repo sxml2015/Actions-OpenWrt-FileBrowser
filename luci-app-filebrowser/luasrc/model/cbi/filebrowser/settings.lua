@@ -43,8 +43,8 @@ o.rmempty = false
 
 o = s:option(Value, "executable_directory", translate("Executable directory"),
              translate(
-                 "The file size is large, requiring at least 32M space. It is recommended to insert a usb flash drive or hard disk, or use it in the tmp directory<br />For example, /mnt/sda1<br />For example, /tmp"))
-o.default = "/tmp"
+                 "The binary is already installed by the filebrowser-bin package, so the default /usr/bin works out of the box. Only change this if you want to keep a custom copy elsewhere (for example /mnt/sda1).<br />Note: /tmp is cleared on every reboot, so do not store the binary there."))
+o.default = "/usr/bin"
 o.rmempty = false
 
 o = s:option(Button, "_download", translate("Manually download"), translate(

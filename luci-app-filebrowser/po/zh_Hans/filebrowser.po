@@ -49,14 +49,14 @@ msgstr "指向一个路径，可在web界面访问你的文件，默认为 /root
 msgid "Executable directory"
 msgstr "可执行文件存放目录"
 
-msgid "The file size is large, requiring at least 32M space. It is recommended to insert a usb flash drive or hard disk, or use it in the tmp directory<br />For example, /mnt/sda1<br />For example, /tmp"
-msgstr "文件较大，至少需要32M空间。建议插入U盘或硬盘，或放入tmp目录里使用<br />例如：/mnt/sda1<br />例如：/tmp"
+msgid "The binary is already installed by the filebrowser-bin package, so the default /usr/bin works out of the box. Only change this if you want to keep a custom copy elsewhere (for example /mnt/sda1).<br />Note: /tmp is cleared on every reboot, so do not store the binary there."
+msgstr "二进制已由 filebrowser-bin 包安装，默认 /usr/bin 开箱可用。只有想自己另存一份时才需要改（例如 /mnt/sda1）。<br />注意：/tmp 每次重启都会清空，不要把二进制放在那里。"
 
 msgid "Manually download"
 msgstr "手动下载"
 
-msgid "Make sure you have enough space. <br /><font style='color:red'>Be sure to fill out the executable storage directory the first time you run it, and then save the application. Then manually download, otherwise can not use!</font>"
-msgstr "请确保具有足够的空间。<br /><font style='color:red'>第一次运行务必填好项目存放目录，然后保存应用。再手动下载，否则无法使用！</font>"
+msgid "The binary is preinstalled by the filebrowser-bin package. Use this only to re-download or upgrade it to the latest release. <br /><font style='color:red'>Make sure the executable directory above is correct before downloading.</font>"
+msgstr "二进制已由 filebrowser-bin 包预装。这里只用于重新下载或升级到最新版本。<br /><font style='color:red'>下载前请确认上面的可执行目录填写正确。</font>"
 
 msgid "Logs"
 msgstr "日志"
