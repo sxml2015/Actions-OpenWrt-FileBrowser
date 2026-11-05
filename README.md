@@ -30,9 +30,9 @@
 本仓库是一个标准 feed，根目录下每个子目录就是一个包。在固件源码根目录执行：
 
 ```bash
-# 1) 添加 feed（只需一次）
-echo 'src-git filebrowser https://github.com/sxml2015/Actions-OpenWrt-FileBrowser.git' \
-    >> feeds.conf.default
+# 1) 添加 feed —— 必须放在 feeds.conf 的第一行，见下面的「同名包冲突」
+sed -i '1i src-git filebrowser https://github.com/sxml2015/Actions-OpenWrt-FileBrowser.git' \
+    feeds.conf.default
 
 # 2) 拉取并安装
 ./scripts/feeds update filebrowser
@@ -43,12 +43,25 @@ echo 'src-git filebrowser https://github.com/sxml2015/Actions-OpenWrt-FileBrowse
 #    CONFIG_PACKAGE_filebrowser-bin=y
 ```
 
-`luci-app-filebrowser` 已声明 `DEPENDS:=+filebrowser-bin`，只选界面包也会自动带上二进制包。
+`luci-app-filebrowser` 已声明 `DEPENDS:=+filebrowser-bin +luci-compat`，只选界面包也会自动
+带上二进制包和 Lua 兼容层。
+
+### 同名包冲突（25.12 必须看）
+
+`coolsnowwolf/luci` 的 `openwrt-25.12` 分支自带一个同名包 `luci-app-filebrowser`
+（stokito 的 JS 版文件管理器，菜单也是 `NAS -> File Browser`，界面为「文件浏览器」+ 删除按钮）。
+
+`scripts/feeds` 对同名源包的规则是「`feeds.conf` 里**先出现者胜**」，后出现的静默跳过，
+没有任何提示。因此：
+
+- 本 feed 追加在末尾 → luci feed 的包先命中 → 固件里装的是别人的包，本插件不生效。
+- 本 feed 必须在 `feeds.conf` 的第一行。
 
 ### 本项目的做法（工作流自动完成）
 
-`aarch64/Lede2512/2512diy-part1.sh` 里追加 feeds 源，位于 `feeds update -a` 之前，
-所以后续步骤会自动拉到；`plugins.cfg` 的「自定义追加区」把两个包改成 `on` 即可。
+`aarch64/Lede2512/2512diy-part1.sh` 把 feeds 源插到 `feeds.conf.default` 第一行，
+位于 `feeds update -a` 之前；`2512diy-part2.sh` 再兜底删掉 luci feed 的同名包链接。
+`plugins.cfg` 的「自定义追加区」把三个包改成 `on` 即可。
 
 ---
 
@@ -109,7 +122,9 @@ curl -s https://api.github.com/repos/filebrowser/filebrowser/releases/latest \
 - 只提供 **arm64**（`aarch64_generic`）二进制，官方仅发布 `linux-arm64`。
   其他架构需要自行替换 `PKG_SOURCE` 与 `PKG_HASH`。
 - 压缩包内是扁平结构（无顶层目录），`Build/Prepare` 不能用 `--strip-components`。
-- 界面包 `LUCI_PKGARCH:=all`，依赖 `luci-compat`（Lede 默认已选）。
+- 界面包 `LUCI_PKGARCH:=all`，界面仍是 Lua CBI（`luasrc/`），24.10 以后的 LuCI 是 JS 前端，
+  所以依赖 `luci-compat`（并自动带入 `luci-lua-runtime`）。这一条已写进 Makefile，
+  不再依赖固件里其他 Lua 插件带来的间接依赖。
 
 ---
 
